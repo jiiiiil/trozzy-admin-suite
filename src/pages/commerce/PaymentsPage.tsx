@@ -15,6 +15,7 @@ const PaymentsPage = () => {
     upiId: '',
     storeName: '',
     contactPhone: '',
+    methods: [],
   });
   const [showUpi, setShowUpi] = useState(false);
 

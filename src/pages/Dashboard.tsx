@@ -95,11 +95,11 @@ const Dashboard = () => {
           iconColor="bg-success/10 text-success"
         />
         <StatCard
-          title="Low Stock Alerts"
-          value={currentStats.lowStock}
-          change="-1"
-          changeType="negative"
-          icon={AlertTriangle}
+          title="Customers"
+          value={currentStats.customers}
+          change="+5%"
+          changeType="positive"
+          icon={Users}
           iconColor="bg-warning/10 text-warning"
         />
       </div>
