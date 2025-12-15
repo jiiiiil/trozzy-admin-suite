@@ -1,0 +1,530 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Save, Plus, X, Image as ImageIcon } from 'lucide-react';
+import { getProducts, setProducts, Product, generateId, addAuditLog, getCategories } from '@/lib/mockData';
+import { useToast } from '@/hooks/use-toast';
+
+const defaultProduct: Omit<Product, 'id' | 'createdAt'> = {
+  name: '',
+  sku: '',
+  price: 0,
+  stock: 0,
+  status: 'draft',
+  image: '',
+  galleryImages: [],
+  category: '',
+  description: '',
+  featured: false,
+  sizes: [],
+  colors: [],
+  variants: [],
+  tags: [],
+  keyFeatures: [],
+  warranty: '',
+  warrantyDetails: '',
+  saleEnabled: false,
+  saleDiscount: 0,
+  saleStartDate: '',
+  saleEndDate: '',
+  metaTitle: '',
+  metaDescription: '',
+  weight: 0,
+  dimensions: { length: 0, width: 0, height: 0 },
+  badge: '',
+  brand: '',
+};
+
+const ProductFormPage = () => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const { toast } = useToast();
+  const isEditing = !!id;
+
+  const [formData, setFormData] = useState(defaultProduct);
+  const [categories, setCategories] = useState(getCategories());
+  const [newSize, setNewSize] = useState('');
+  const [newColor, setNewColor] = useState('');
+  const [newTag, setNewTag] = useState('');
+  const [newFeature, setNewFeature] = useState('');
+  const [newGalleryUrl, setNewGalleryUrl] = useState('');
+
+  useEffect(() => {
+    if (isEditing) {
+      const products = getProducts();
+      const product = products.find(p => p.id === id);
+      if (product) {
+        setFormData({
+          name: product.name,
+          sku: product.sku,
+          price: product.price,
+          stock: product.stock,
+          status: product.status,
+          image: product.image,
+          galleryImages: product.galleryImages || [],
+          category: product.category,
+          description: product.description,
+          featured: product.featured,
+          sizes: product.sizes || [],
+          colors: product.colors || [],
+          variants: product.variants || [],
+          tags: product.tags || [],
+          keyFeatures: product.keyFeatures || [],
+          warranty: product.warranty || '',
+          warrantyDetails: product.warrantyDetails || '',
+          saleEnabled: product.saleEnabled || false,
+          saleDiscount: product.saleDiscount || 0,
+          saleStartDate: product.saleStartDate || '',
+          saleEndDate: product.saleEndDate || '',
+          metaTitle: product.metaTitle || '',
+          metaDescription: product.metaDescription || '',
+          weight: product.weight || 0,
+          dimensions: product.dimensions || { length: 0, width: 0, height: 0 },
+          badge: product.badge || '',
+          brand: product.brand || '',
+        });
+      }
+    }
+  }, [id, isEditing]);
+
+  const handleSubmit = () => {
+    if (!formData.name || !formData.sku || formData.price <= 0) {
+      toast({ title: 'Error', description: 'Please fill in name, SKU, and price', variant: 'destructive' });
+      return;
+    }
+
+    const products = getProducts();
+    
+    if (isEditing) {
+      const updated = products.map(p => 
+        p.id === id ? { ...p, ...formData } : p
+      );
+      setProducts(updated);
+      addAuditLog({ user: 'Admin User', action: 'Updated product', module: 'Products', timestamp: new Date().toISOString(), details: `Updated: ${formData.name}` });
+      toast({ title: 'Success', description: 'Product updated successfully' });
+    } else {
+      const newProduct: Product = {
+        ...formData,
+        id: generateId(),
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+      setProducts([newProduct, ...products]);
+      addAuditLog({ user: 'Admin User', action: 'Created product', module: 'Products', timestamp: new Date().toISOString(), details: `Created: ${formData.name}` });
+      toast({ title: 'Success', description: 'Product created successfully' });
+    }
+
+    navigate('/commerce/products');
+  };
+
+  const addItem = (field: 'sizes' | 'colors' | 'tags' | 'keyFeatures', value: string, setter: (v: string) => void) => {
+    if (value.trim()) {
+      setFormData(prev => ({ ...prev, [field]: [...prev[field], value.trim()] }));
+      setter('');
+    }
+  };
+
+  const removeItem = (field: 'sizes' | 'colors' | 'tags' | 'keyFeatures', index: number) => {
+    setFormData(prev => ({ ...prev, [field]: prev[field].filter((_, i) => i !== index) }));
+  };
+
+  const addGalleryImage = () => {
+    if (newGalleryUrl.trim()) {
+      setFormData(prev => ({ ...prev, galleryImages: [...prev.galleryImages, newGalleryUrl.trim()] }));
+      setNewGalleryUrl('');
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    setFormData(prev => ({ ...prev, galleryImages: prev.galleryImages.filter((_, i) => i !== index) }));
+  };
+
+  const generateVariants = () => {
+    if (formData.sizes.length === 0 || formData.colors.length === 0) {
+      toast({ title: 'Info', description: 'Add sizes and colors first to generate variants' });
+      return;
+    }
+    const variants = formData.sizes.flatMap(size => 
+      formData.colors.map(color => ({
+        id: generateId(),
+        size,
+        color,
+        price: formData.price,
+        stock: 0,
+        sku: `${formData.sku}-${size}-${color}`.toUpperCase().replace(/\s/g, ''),
+      }))
+    );
+    setFormData(prev => ({ ...prev, variants }));
+    toast({ title: 'Generated', description: `Created ${variants.length} variants` });
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate('/commerce/products')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">{isEditing ? 'Edit Product' : 'Add New Product'}</h1>
+            <p className="text-muted-foreground">Fill in the product details below</p>
+          </div>
+        </div>
+        <Button onClick={handleSubmit} className="gradient-primary text-primary-foreground">
+          <Save className="mr-2 h-4 w-4" />
+          {isEditing ? 'Update Product' : 'Save Product'}
+        </Button>
+      </div>
+
+      <Tabs defaultValue="basic" className="w-full">
+        <TabsList className="glass grid grid-cols-5 lg:grid-cols-9 w-full">
+          <TabsTrigger value="basic">Basic</TabsTrigger>
+          <TabsTrigger value="images">Images</TabsTrigger>
+          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="attributes">Attributes</TabsTrigger>
+          <TabsTrigger value="seo">SEO</TabsTrigger>
+          <TabsTrigger value="shipping">Shipping</TabsTrigger>
+          <TabsTrigger value="marketing">Marketing</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="sale">Sale</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="basic" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Basic Information</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Product Name *</Label>
+                  <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter product name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={formData.category} onValueChange={v => setFormData({ ...formData, category: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>
+                      {categories.filter(c => c.active).map(cat => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Product description" rows={4} />
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label>Price *</Label>
+                  <Input type="number" value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} placeholder="0.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Brand</Label>
+                  <Input value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })} placeholder="Brand name" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={(v: Product['status']) => setFormData({ ...formData, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="images" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Product Images</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Main Image URL</Label>
+                <Input value={formData.image} onChange={e => setFormData({ ...formData, image: e.target.value })} placeholder="https://example.com/image.jpg" />
+                {formData.image && (
+                  <div className="mt-2">
+                    <img src={formData.image} alt="Preview" className="h-32 w-32 rounded-lg object-cover border" />
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Gallery Images ({formData.galleryImages.length}/10)</Label>
+                <div className="flex gap-2">
+                  <Input value={newGalleryUrl} onChange={e => setNewGalleryUrl(e.target.value)} placeholder="Image URL" />
+                  <Button onClick={addGalleryImage} variant="outline"><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="grid grid-cols-5 gap-2 mt-2">
+                  {formData.galleryImages.map((url, i) => (
+                    <div key={i} className="relative aspect-square">
+                      <img src={url} alt={`Gallery ${i}`} className="w-full h-full rounded-lg object-cover border" />
+                      <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6" onClick={() => removeGalleryImage(i)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  {formData.galleryImages.length < 10 && (
+                    <div className="aspect-square rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
+                      <ImageIcon className="h-6 w-6" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inventory" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Inventory Management</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>SKU *</Label>
+                  <div className="flex gap-2">
+                    <Input value={formData.sku} onChange={e => setFormData({ ...formData, sku: e.target.value })} placeholder="PRD-001" />
+                    <Button variant="outline" onClick={() => setFormData({ ...formData, sku: `SKU-${generateId().toUpperCase()}` })}>Auto</Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Stock Quantity</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" value={formData.stock} onChange={e => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} placeholder="0" />
+                    <Button variant="outline" onClick={() => setFormData(p => ({ ...p, stock: p.stock + 10 }))}>+10</Button>
+                    <Button variant="outline" onClick={() => setFormData(p => ({ ...p, stock: p.stock + 50 }))}>+50</Button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Featured Product</p>
+                  <p className="text-sm text-muted-foreground">Show in featured sections</p>
+                </div>
+                <Switch checked={formData.featured} onCheckedChange={checked => setFormData({ ...formData, featured: checked })} />
+              </div>
+              {formData.stock > 0 && formData.stock <= 10 && (
+                <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+                  <p className="text-warning font-medium">Low Stock Warning</p>
+                  <p className="text-sm text-muted-foreground">This product has low stock ({formData.stock} remaining)</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="attributes" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Product Attributes</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Sizes</Label>
+                <div className="flex gap-2">
+                  <Input value={newSize} onChange={e => setNewSize(e.target.value)} placeholder="e.g., S, M, L" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('sizes', newSize, setNewSize))} />
+                  <Button variant="outline" onClick={() => addItem('sizes', newSize, setNewSize)}><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.sizes.map((size, i) => (
+                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => removeItem('sizes', i)}>{size} <X className="h-3 w-3 ml-1" /></Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Colors</Label>
+                <div className="flex gap-2">
+                  <Input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="e.g., Red, Blue" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('colors', newColor, setNewColor))} />
+                  <Button variant="outline" onClick={() => addItem('colors', newColor, setNewColor)}><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.colors.map((color, i) => (
+                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => removeItem('colors', i)}>{color} <X className="h-3 w-3 ml-1" /></Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="pt-4 border-t">
+                <div className="flex items-center justify-between mb-4">
+                  <Label>Variants ({formData.variants.length})</Label>
+                  <Button variant="outline" onClick={generateVariants}>Generate Variants</Button>
+                </div>
+                {formData.variants.length > 0 && (
+                  <div className="space-y-2 max-h-60 overflow-auto">
+                    {formData.variants.map((variant, i) => (
+                      <div key={variant.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                        <span className="font-medium w-24">{variant.size} / {variant.color}</span>
+                        <Input type="number" value={variant.price} onChange={e => {
+                          const updated = [...formData.variants];
+                          updated[i].price = parseFloat(e.target.value) || 0;
+                          setFormData({ ...formData, variants: updated });
+                        }} className="w-24" placeholder="Price" />
+                        <Input type="number" value={variant.stock} onChange={e => {
+                          const updated = [...formData.variants];
+                          updated[i].stock = parseInt(e.target.value) || 0;
+                          setFormData({ ...formData, variants: updated });
+                        }} className="w-24" placeholder="Stock" />
+                        <span className="text-sm text-muted-foreground">{variant.sku}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="seo" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>SEO Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Meta Title</Label>
+                <Input value={formData.metaTitle} onChange={e => setFormData({ ...formData, metaTitle: e.target.value })} placeholder="SEO optimized title" />
+              </div>
+              <div className="space-y-2">
+                <Label>Meta Description</Label>
+                <Textarea value={formData.metaDescription} onChange={e => setFormData({ ...formData, metaDescription: e.target.value })} placeholder="SEO description (max 160 chars)" rows={3} />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="shipping" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Shipping Information</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Weight (kg)</Label>
+                  <Input type="number" value={formData.weight} onChange={e => setFormData({ ...formData, weight: parseFloat(e.target.value) || 0 })} placeholder="0.0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Dimensions (cm)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input type="number" value={formData.dimensions.length} onChange={e => setFormData({ ...formData, dimensions: { ...formData.dimensions, length: parseFloat(e.target.value) || 0 } })} placeholder="L" />
+                    <Input type="number" value={formData.dimensions.width} onChange={e => setFormData({ ...formData, dimensions: { ...formData.dimensions, width: parseFloat(e.target.value) || 0 } })} placeholder="W" />
+                    <Input type="number" value={formData.dimensions.height} onChange={e => setFormData({ ...formData, dimensions: { ...formData.dimensions, height: parseFloat(e.target.value) || 0 } })} placeholder="H" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="marketing" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Marketing Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Promotional Badge</Label>
+                <Select value={formData.badge} onValueChange={v => setFormData({ ...formData, badge: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select badge" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="bestseller">Bestseller</SelectItem>
+                    <SelectItem value="limited">Limited Edition</SelectItem>
+                    <SelectItem value="sale">On Sale</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="details" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Product Details</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Tags</Label>
+                <div className="flex gap-2">
+                  <Input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Add tag" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('tags', newTag, setNewTag))} />
+                  <Button variant="outline" onClick={() => addItem('tags', newTag, setNewTag)}><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {formData.tags.map((tag, i) => (
+                    <Badge key={i} variant="outline" className="cursor-pointer" onClick={() => removeItem('tags', i)}>{tag} <X className="h-3 w-3 ml-1" /></Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Key Features</Label>
+                <div className="flex gap-2">
+                  <Input value={newFeature} onChange={e => setNewFeature(e.target.value)} placeholder="Add feature" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('keyFeatures', newFeature, setNewFeature))} />
+                  <Button variant="outline" onClick={() => addItem('keyFeatures', newFeature, setNewFeature)}><Plus className="h-4 w-4" /></Button>
+                </div>
+                <div className="space-y-2 mt-2">
+                  {formData.keyFeatures.map((feature, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                      <span className="flex-1">{feature}</span>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeItem('keyFeatures', i)}><X className="h-3 w-3" /></Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Warranty</Label>
+                  <Input value={formData.warranty} onChange={e => setFormData({ ...formData, warranty: e.target.value })} placeholder="e.g., 1 Year" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Warranty Details</Label>
+                  <Input value={formData.warrantyDetails} onChange={e => setFormData({ ...formData, warrantyDetails: e.target.value })} placeholder="Coverage details" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="sale" className="mt-6">
+          <Card className="glass">
+            <CardHeader><CardTitle>Sale Settings</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Enable Limited Sale</p>
+                  <p className="text-sm text-muted-foreground">Create a time-limited discount</p>
+                </div>
+                <Switch checked={formData.saleEnabled} onCheckedChange={checked => setFormData({ ...formData, saleEnabled: checked })} />
+              </div>
+              {formData.saleEnabled && (
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Discount %</Label>
+                    <Input type="number" value={formData.saleDiscount} onChange={e => setFormData({ ...formData, saleDiscount: parseInt(e.target.value) || 0 })} placeholder="0" min={0} max={100} />
+                    {formData.saleDiscount > 0 && formData.price > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Sale price: ${(formData.price * (1 - formData.saleDiscount / 100)).toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Start Date</Label>
+                      <Input type="date" value={formData.saleStartDate} onChange={e => setFormData({ ...formData, saleStartDate: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Date</Label>
+                      <Input type="date" value={formData.saleEndDate} onChange={e => setFormData({ ...formData, saleEndDate: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default ProductFormPage;
