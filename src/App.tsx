@@ -2,15 +2,17 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AdminLayout } from "./components/layout/AdminLayout";
+import { isAuthenticated, initializeMockData } from "./lib/mockData";
+import SignInPage from "./pages/auth/SignInPage";
 import Dashboard from "./pages/Dashboard";
 import AnalyticsOverview from "./pages/analytics/AnalyticsOverview";
 import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics";
-import RealTimeAnalytics from "./pages/analytics/RealTimeAnalytics";
 import BusinessIntelligence from "./pages/analytics/BusinessIntelligence";
 import ReportBuilder from "./pages/analytics/ReportBuilder";
 import ProductsPage from "./pages/commerce/ProductsPage";
+import ProductFormPage from "./pages/commerce/ProductFormPage";
 import OrdersPage from "./pages/commerce/OrdersPage";
 import InventoryPage from "./pages/commerce/InventoryPage";
 import PaymentsPage from "./pages/commerce/PaymentsPage";
@@ -29,6 +31,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Initialize data on app load
+initializeMockData();
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/sign-in" replace />;
+  }
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -36,14 +48,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route element={<AdminLayout />}>
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/analytics/overview" element={<AnalyticsOverview />} />
             <Route path="/analytics/advanced" element={<AdvancedAnalytics />} />
-            <Route path="/analytics/realtime" element={<RealTimeAnalytics />} />
             <Route path="/analytics/bi" element={<BusinessIntelligence />} />
             <Route path="/analytics/reports" element={<ReportBuilder />} />
             <Route path="/commerce/products" element={<ProductsPage />} />
+            <Route path="/commerce/products/new" element={<ProductFormPage />} />
+            <Route path="/commerce/products/:id" element={<ProductFormPage />} />
             <Route path="/commerce/orders" element={<OrdersPage />} />
             <Route path="/commerce/inventory" element={<InventoryPage />} />
             <Route path="/commerce/payments" element={<PaymentsPage />} />
