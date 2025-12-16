@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
-import { Search, AlertTriangle, Package, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, AlertTriangle, Package, Plus, Minus } from 'lucide-react';
 import { initializeMockData, getProducts, setProducts, Product, addAuditLog } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
 
@@ -102,11 +102,17 @@ const InventoryPage = () => {
       header: 'Quick Update',
       render: (product: Product) => (
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleStockUpdate(product.id, -1)}>
-            <ArrowDown className="h-4 w-4" />
+          <Button 
+            size="icon" 
+            variant="outline" 
+            className="h-8 w-8" 
+            onClick={() => handleStockUpdate(product.id, -1)}
+            disabled={product.stock === 0}
+          >
+            <Minus className="h-4 w-4" />
           </Button>
           <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleStockUpdate(product.id, 1)}>
-            <ArrowUp className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
           </Button>
           <Button size="sm" variant="outline" onClick={() => handleStockUpdate(product.id, 10)}>+10</Button>
           <Button size="sm" variant="outline" onClick={() => handleStockUpdate(product.id, 50)}>+50</Button>

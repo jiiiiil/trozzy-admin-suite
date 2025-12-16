@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Users, ShoppingCart, DollarSign, Globe, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Activity, Users, ShoppingCart, DollarSign, Globe, Clock, Pause, Play } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -9,13 +10,19 @@ import {
   YAxis,
   ResponsiveContainer,
 } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 const RealTimeAnalytics = () => {
-  const [liveData, setLiveData] = useState({
-    activeUsers: 127,
-    ordersPerMinute: 2.4,
-    revenuePerMinute: 89.5,
-    pageViews: 342,
+  const { toast } = useToast();
+  const [isPaused, setIsPaused] = useState(false);
+  const [liveData, setLiveData] = useState(() => {
+    const saved = localStorage.getItem('trozzy_realtime_snapshot');
+    return saved ? JSON.parse(saved) : {
+      activeUsers: 127,
+      ordersPerMinute: 2.4,
+      revenuePerMinute: 89.5,
+      pageViews: 342,
+    };
   });
 
   const [realtimeChart, setRealtimeChart] = useState([
@@ -43,26 +50,42 @@ const RealTimeAnalytics = () => {
     { country: 'Australia', users: 12, flag: '🇦🇺' },
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLiveData((prev) => ({
-        activeUsers: prev.activeUsers + Math.floor(Math.random() * 10) - 5,
-        ordersPerMinute: Math.max(0, prev.ordersPerMinute + (Math.random() * 0.6 - 0.3)),
-        revenuePerMinute: Math.max(0, prev.revenuePerMinute + (Math.random() * 20 - 10)),
+  const updateData = useCallback(() => {
+    setLiveData((prev: typeof liveData) => {
+      const newData = {
+        activeUsers: Math.max(50, prev.activeUsers + Math.floor(Math.random() * 10) - 5),
+        ordersPerMinute: Math.max(0.1, +(prev.ordersPerMinute + (Math.random() * 0.6 - 0.3)).toFixed(1)),
+        revenuePerMinute: Math.max(10, +(prev.revenuePerMinute + (Math.random() * 20 - 10)).toFixed(2)),
         pageViews: prev.pageViews + Math.floor(Math.random() * 15),
-      }));
+      };
+      localStorage.setItem('trozzy_realtime_snapshot', JSON.stringify(newData));
+      return newData;
+    });
 
-      setRealtimeChart((prev) => {
-        const newData = [...prev.slice(1), {
-          time: `${parseInt(prev[prev.length - 1].time) + 10}s`,
-          users: Math.max(100, Math.floor(Math.random() * 50) + 110),
-        }];
-        return newData;
-      });
-    }, 3000);
-
-    return () => clearInterval(interval);
+    setRealtimeChart((prev) => {
+      const lastTime = parseInt(prev[prev.length - 1].time) || 0;
+      const newData = [...prev.slice(1), {
+        time: `${lastTime + 10}s`,
+        users: Math.max(100, Math.floor(Math.random() * 50) + 110),
+      }];
+      return newData;
+    });
   }, []);
+
+  useEffect(() => {
+    if (isPaused) return;
+    
+    const interval = setInterval(updateData, 3000);
+    return () => clearInterval(interval);
+  }, [isPaused, updateData]);
+
+  const handleTogglePause = () => {
+    setIsPaused(!isPaused);
+    toast({ 
+      title: isPaused ? 'Resumed' : 'Paused', 
+      description: isPaused ? 'Live updates resumed' : 'Live updates paused' 
+    });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -73,10 +96,16 @@ const RealTimeAnalytics = () => {
             Live activity on your store right now.
           </p>
         </div>
-        <Badge className="gradient-primary text-primary-foreground animate-pulse">
-          <Activity className="mr-2 h-4 w-4" />
-          Live
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={handleTogglePause}>
+            {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+            {isPaused ? 'Resume' : 'Pause'}
+          </Button>
+          <Badge className={`${isPaused ? 'bg-muted text-muted-foreground' : 'gradient-primary text-primary-foreground animate-pulse'}`}>
+            <Activity className="mr-2 h-4 w-4" />
+            {isPaused ? 'Paused' : 'Live'}
+          </Badge>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,10 +7,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { FileText, Plus, Calendar as CalendarIcon, Download, Trash2, Play } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { FileText, Plus, Calendar as CalendarIcon, Download, Trash2, Play, Edit, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { exportToCSV, generateId } from '@/lib/mockData';
+
+interface Report {
+  id: string;
+  name: string;
+  type: string;
+  created: string;
+  status: string;
+  metrics: string[];
+  dateFrom: string;
+  dateTo: string;
+  data?: any[];
+}
 
 const ReportBuilder = () => {
   const { toast } = useToast();
@@ -21,11 +36,27 @@ const ReportBuilder = () => {
     to: new Date(2024, 11, 15),
   });
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['revenue', 'orders']);
-  const [savedReports, setSavedReports] = useState([
-    { id: '1', name: 'Monthly Sales Report', type: 'Sales', created: '2024-12-10', status: 'Ready' },
-    { id: '2', name: 'Q4 Performance', type: 'Performance', created: '2024-12-08', status: 'Ready' },
-    { id: '3', name: 'Customer Insights', type: 'Customer', created: '2024-12-05', status: 'Ready' },
-  ]);
+  const [savedReports, setSavedReports] = useState<Report[]>([]);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [viewingReport, setViewingReport] = useState<Report | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Load reports from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('trozzy_reports');
+    if (saved) {
+      setSavedReports(JSON.parse(saved));
+    } else {
+      // Initialize with default reports
+      const defaultReports: Report[] = [
+        { id: '1', name: 'Monthly Sales Report', type: 'Sales', created: '2024-12-10', status: 'Ready', metrics: ['revenue', 'orders'], dateFrom: '2024-12-01', dateTo: '2024-12-10', data: generateReportData('sales') },
+        { id: '2', name: 'Q4 Performance', type: 'Performance', created: '2024-12-08', status: 'Ready', metrics: ['revenue', 'conversion'], dateFrom: '2024-10-01', dateTo: '2024-12-08', data: generateReportData('performance') },
+        { id: '3', name: 'Customer Insights', type: 'Customer', created: '2024-12-05', status: 'Ready', metrics: ['customers', 'avgOrder'], dateFrom: '2024-11-01', dateTo: '2024-12-05', data: generateReportData('customer') },
+      ];
+      setSavedReports(defaultReports);
+      localStorage.setItem('trozzy_reports', JSON.stringify(defaultReports));
+    }
+  }, []);
 
   const metrics = [
     { id: 'revenue', label: 'Revenue' },
@@ -36,10 +67,27 @@ const ReportBuilder = () => {
     { id: 'avgOrder', label: 'Average Order Value' },
   ];
 
+  function generateReportData(type: string) {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return days.map(day => ({
+      day,
+      revenue: Math.floor(Math.random() * 5000) + 1000,
+      orders: Math.floor(Math.random() * 50) + 10,
+      customers: Math.floor(Math.random() * 30) + 5,
+      conversion: (Math.random() * 5 + 1).toFixed(2),
+      avgOrder: Math.floor(Math.random() * 100) + 50,
+    }));
+  }
+
   const handleMetricToggle = (metricId: string) => {
     setSelectedMetrics((prev) =>
       prev.includes(metricId) ? prev.filter((m) => m !== metricId) : [...prev, metricId]
     );
+  };
+
+  const saveReports = (reports: Report[]) => {
+    setSavedReports(reports);
+    localStorage.setItem('trozzy_reports', JSON.stringify(reports));
   };
 
   const handleCreateReport = () => {
@@ -48,22 +96,62 @@ const ReportBuilder = () => {
       return;
     }
 
-    const newReport = {
-      id: Date.now().toString(),
+    const newReport: Report = {
+      id: generateId(),
       name: reportName,
       type: reportType.charAt(0).toUpperCase() + reportType.slice(1),
       created: format(new Date(), 'yyyy-MM-dd'),
       status: 'Ready',
+      metrics: selectedMetrics,
+      dateFrom: dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : '',
+      dateTo: dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : '',
+      data: generateReportData(reportType),
     };
 
-    setSavedReports([newReport, ...savedReports]);
+    saveReports([newReport, ...savedReports]);
     setReportName('');
     toast({ title: 'Report Created', description: `${reportName} has been created successfully.` });
   };
 
+  const handleUpdateReport = () => {
+    if (!editingReport) return;
+    
+    const updated = savedReports.map(r => 
+      r.id === editingReport.id ? editingReport : r
+    );
+    saveReports(updated);
+    setEditingReport(null);
+    toast({ title: 'Report Updated', description: 'Report has been updated successfully.' });
+  };
+
   const handleDeleteReport = (id: string) => {
-    setSavedReports(savedReports.filter((r) => r.id !== id));
+    const updated = savedReports.filter((r) => r.id !== id);
+    saveReports(updated);
+    setDeleteConfirmId(null);
     toast({ title: 'Report Deleted', description: 'The report has been deleted.' });
+  };
+
+  const handleDownloadReport = (report: Report) => {
+    if (!report.data) {
+      toast({ title: 'Error', description: 'No data available for this report', variant: 'destructive' });
+      return;
+    }
+    
+    const filename = `${report.name.replace(/\s+/g, '-').toLowerCase()}-${report.created}.csv`;
+    exportToCSV(report.data, filename);
+    toast({ title: 'Downloaded', description: `${filename} downloaded successfully` });
+  };
+
+  const handleExportCurrent = () => {
+    if (selectedMetrics.length === 0) {
+      toast({ title: 'Error', description: 'Please select at least one metric', variant: 'destructive' });
+      return;
+    }
+    
+    const data = generateReportData(reportType);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    exportToCSV(data, `report-preview-${today}.csv`);
+    toast({ title: 'Exported', description: 'Report preview exported as CSV' });
   };
 
   return (
@@ -167,7 +255,7 @@ const ReportBuilder = () => {
                 <Play className="mr-2 h-4 w-4" />
                 Generate Report
               </Button>
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExportCurrent}>
                 <Download className="mr-2 h-4 w-4" />
                 Export as CSV
               </Button>
@@ -179,11 +267,11 @@ const ReportBuilder = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-accent" />
-              Saved Reports
+              Saved Reports ({savedReports.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-96 overflow-auto">
               {savedReports.map((report) => (
                 <div
                   key={report.id}
@@ -198,23 +286,135 @@ const ReportBuilder = () => {
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8"
-                      onClick={() => handleDeleteReport(report.id)}
+                      onClick={() => setDeleteConfirmId(report.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
-                      <Download className="mr-2 h-3 w-3" />
-                      Download
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setViewingReport(report)}>
+                      <Eye className="mr-1 h-3 w-3" />
+                      View
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingReport(report)}>
+                      <Edit className="mr-1 h-3 w-3" />
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleDownloadReport(report)}>
+                      <Download className="mr-1 h-3 w-3" />
+                      CSV
                     </Button>
                   </div>
                 </div>
               ))}
+              {savedReports.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">No saved reports yet</p>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* View Report Dialog */}
+      <Dialog open={!!viewingReport} onOpenChange={(open) => !open && setViewingReport(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{viewingReport?.name}</DialogTitle>
+          </DialogHeader>
+          {viewingReport && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-muted-foreground">Type:</span> {viewingReport.type}</div>
+                <div><span className="text-muted-foreground">Created:</span> {viewingReport.created}</div>
+                <div><span className="text-muted-foreground">Date Range:</span> {viewingReport.dateFrom} to {viewingReport.dateTo}</div>
+                <div><span className="text-muted-foreground">Metrics:</span> {viewingReport.metrics.join(', ')}</div>
+              </div>
+              {viewingReport.data && (
+                <div className="border rounded-lg overflow-auto max-h-60">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        {Object.keys(viewingReport.data[0] || {}).map(key => (
+                          <th key={key} className="p-2 text-left font-medium">{key}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewingReport.data.map((row, i) => (
+                        <tr key={i} className="border-t">
+                          {Object.values(row).map((val, j) => (
+                            <td key={j} className="p-2">{String(val)}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <Button onClick={() => handleDownloadReport(viewingReport)} className="w-full">
+                <Download className="mr-2 h-4 w-4" />
+                Download CSV
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Report Dialog */}
+      <Dialog open={!!editingReport} onOpenChange={(open) => !open && setEditingReport(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Report</DialogTitle>
+          </DialogHeader>
+          {editingReport && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Report Name</Label>
+                <Input
+                  value={editingReport.name}
+                  onChange={(e) => setEditingReport({ ...editingReport, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Report Type</Label>
+                <Select value={editingReport.type.toLowerCase()} onValueChange={(v) => setEditingReport({ ...editingReport, type: v.charAt(0).toUpperCase() + v.slice(1) })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sales">Sales</SelectItem>
+                    <SelectItem value="performance">Performance</SelectItem>
+                    <SelectItem value="customer">Customer</SelectItem>
+                    <SelectItem value="inventory">Inventory</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingReport(null)}>Cancel</Button>
+                <Button onClick={handleUpdateReport}>Save Changes</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Report?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the report.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteConfirmId && handleDeleteReport(deleteConfirmId)} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
