@@ -437,57 +437,157 @@ const ProductFormPage = () => {
         <TabsContent value="attributes" className="mt-6">
           <Card className="glass">
             <CardHeader><CardTitle>Product Attributes</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Sizes</Label>
-                <div className="flex gap-2">
-                  <Input value={newSize} onChange={e => setNewSize(e.target.value)} placeholder="e.g., S, M, L" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('sizes', newSize, setNewSize))} />
-                  <Button variant="outline" onClick={() => addItem('sizes', newSize, setNewSize)}><Plus className="h-4 w-4" /></Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.sizes.map((size, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => removeItem('sizes', i)}>{size} <X className="h-3 w-3 ml-1" /></Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Colors</Label>
-                <div className="flex gap-2">
-                  <Input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="e.g., Red, Blue" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('colors', newColor, setNewColor))} />
-                  <Button variant="outline" onClick={() => addItem('colors', newColor, setNewColor)}><Plus className="h-4 w-4" /></Button>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.colors.map((color, i) => (
-                    <Badge key={i} variant="secondary" className="cursor-pointer" onClick={() => removeItem('colors', i)}>{color} <X className="h-3 w-3 ml-1" /></Badge>
-                  ))}
-                </div>
-              </div>
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between mb-4">
-                  <Label>Variants ({formData.variants.length})</Label>
-                  <Button variant="outline" onClick={generateVariants}>Generate Variants</Button>
-                </div>
-                {formData.variants.length > 0 && (
-                  <div className="space-y-2 max-h-60 overflow-auto">
-                    {formData.variants.map((variant, i) => (
-                      <div key={variant.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                        <span className="font-medium w-24">{variant.size} / {variant.color}</span>
-                        <Input type="number" value={variant.price} onChange={e => {
-                          const updated = [...formData.variants];
-                          updated[i].price = parseFloat(e.target.value) || 0;
-                          setFormData({ ...formData, variants: updated });
-                        }} className="w-24" placeholder="Price" />
-                        <Input type="number" value={variant.stock} onChange={e => {
-                          const updated = [...formData.variants];
-                          updated[i].stock = parseInt(e.target.value) || 0;
-                          setFormData({ ...formData, variants: updated });
-                        }} className="w-24" placeholder="Stock" />
-                        <span className="text-sm text-muted-foreground">{variant.sku}</span>
-                      </div>
-                    ))}
+            <CardContent>
+              <Tabs defaultValue="sizes" className="w-full">
+                <TabsList className="grid grid-cols-4 w-full mb-6">
+                  <TabsTrigger value="sizes">Sizes</TabsTrigger>
+                  <TabsTrigger value="colors">Colors</TabsTrigger>
+                  <TabsTrigger value="variants">Variants</TabsTrigger>
+                  <TabsTrigger value="other">Other</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="sizes" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Add Sizes</Label>
+                    <p className="text-sm text-muted-foreground">Add available sizes for this product (e.g., S, M, L, XL)</p>
+                    <div className="flex gap-2 mt-2">
+                      <Input value={newSize} onChange={e => setNewSize(e.target.value)} placeholder="Enter size (e.g., S, M, L)" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('sizes', newSize, setNewSize))} />
+                      <Button variant="outline" onClick={() => addItem('sizes', newSize, setNewSize)}><Plus className="h-4 w-4 mr-2" />Add</Button>
+                    </div>
                   </div>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <Label>Added Sizes ({formData.sizes.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.sizes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No sizes added yet</p>
+                      ) : (
+                        formData.sizes.map((size, i) => (
+                          <Badge key={i} variant="secondary" className="cursor-pointer px-3 py-1.5 text-sm" onClick={() => removeItem('sizes', i)}>
+                            {size} <X className="h-3 w-3 ml-2" />
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="colors" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Add Colors</Label>
+                    <p className="text-sm text-muted-foreground">Add available colors for this product (e.g., Red, Blue, Black)</p>
+                    <div className="flex gap-2 mt-2">
+                      <Input value={newColor} onChange={e => setNewColor(e.target.value)} placeholder="Enter color (e.g., Red, Blue)" onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addItem('colors', newColor, setNewColor))} />
+                      <Button variant="outline" onClick={() => addItem('colors', newColor, setNewColor)}><Plus className="h-4 w-4 mr-2" />Add</Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Added Colors ({formData.colors.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.colors.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No colors added yet</p>
+                      ) : (
+                        formData.colors.map((color, i) => (
+                          <Badge key={i} variant="secondary" className="cursor-pointer px-3 py-1.5 text-sm" onClick={() => removeItem('colors', i)}>
+                            {color} <X className="h-3 w-3 ml-2" />
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="variants" className="space-y-4">
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Add sizes and/or colors to create variants automatically. Variants will be generated from all size × color combinations.
+                    </p>
+                    <Button onClick={generateVariants} disabled={formData.sizes.length === 0 && formData.colors.length === 0}>
+                      <Plus className="h-4 w-4 mr-2" />Create Variant Group
+                    </Button>
+                  </div>
+                  
+                  {formData.variants.length > 0 && (
+                    <div className="space-y-3">
+                      <Label>Generated Variants ({formData.variants.length})</Label>
+                      <div className="space-y-2 max-h-80 overflow-auto pr-2">
+                        {formData.variants.map((variant, i) => (
+                          <div key={variant.id} className="grid grid-cols-5 gap-3 p-3 rounded-lg bg-muted/50 items-center">
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Variant</Label>
+                              <p className="font-medium text-sm">{variant.size} / {variant.color}</p>
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">SKU</Label>
+                              <Input 
+                                value={variant.sku} 
+                                onChange={e => {
+                                  const updated = [...formData.variants];
+                                  updated[i].sku = e.target.value;
+                                  setFormData({ ...formData, variants: updated });
+                                }} 
+                                className="h-8 text-sm" 
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Price</Label>
+                              <Input 
+                                type="number" 
+                                value={variant.price} 
+                                onChange={e => {
+                                  const updated = [...formData.variants];
+                                  updated[i].price = parseFloat(e.target.value) || 0;
+                                  setFormData({ ...formData, variants: updated });
+                                }} 
+                                className="h-8 text-sm" 
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-muted-foreground">Stock</Label>
+                              <Input 
+                                type="number" 
+                                value={variant.stock} 
+                                onChange={e => {
+                                  const updated = [...formData.variants];
+                                  updated[i].stock = parseInt(e.target.value) || 0;
+                                  setFormData({ ...formData, variants: updated });
+                                }} 
+                                className="h-8 text-sm" 
+                              />
+                            </div>
+                            <div className="flex justify-end">
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  const updated = formData.variants.filter((_, idx) => idx !== i);
+                                  setFormData({ ...formData, variants: updated });
+                                }}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {formData.variants.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No variants created yet</p>
+                      <p className="text-sm mt-1">Add sizes and colors first, then click "Create Variant Group"</p>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="other" className="space-y-4">
+                  <div className="p-6 rounded-lg bg-muted/50 border border-border text-center">
+                    <p className="text-muted-foreground">Additional attributes coming soon</p>
+                    <p className="text-sm text-muted-foreground mt-1">Custom attributes like material, style, etc. will be available here</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
