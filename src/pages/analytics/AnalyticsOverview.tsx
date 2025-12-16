@@ -19,10 +19,12 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { initializeMockData, getAnalyticsData, getDashboardStats } from '@/lib/mockData';
+import { initializeMockData, getAnalyticsData, getDashboardStats, exportToCSV } from '@/lib/mockData';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 const AnalyticsOverview = () => {
+  const { toast } = useToast();
   const [analytics, setAnalytics] = useState(getAnalyticsData());
   const [stats, setStats] = useState(getDashboardStats());
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -42,6 +44,21 @@ const AnalyticsOverview = () => {
     name: p.name.split(' ').slice(0, 2).join(' '),
     value: p.sales,
   }));
+
+  const handleExport = () => {
+    const exportData = [
+      { metric: 'Page Views', value: analytics.pageViews.reduce((sum, p) => sum + p.views, 0) },
+      { metric: 'Unique Visitors', value: analytics.visitors.reduce((sum, v) => sum + v.count, 0) },
+      { metric: 'Conversion Rate', value: `${analytics.conversionRate}%` },
+      { metric: 'Bounce Rate', value: `${analytics.bounceRate}%` },
+      ...analytics.topProducts.map(p => ({ metric: `Top Product: ${p.name}`, value: p.sales })),
+      ...analytics.sales.map(s => ({ metric: `Sales on ${s.date}`, value: `$${s.amount}` })),
+    ];
+    
+    const today = new Date().toISOString().split('T')[0];
+    exportToCSV(exportData, `analytics-report-${today}.csv`);
+    toast({ title: 'Exported', description: `analytics-report-${today}.csv downloaded` });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -80,7 +97,7 @@ const AnalyticsOverview = () => {
               />
             </PopoverContent>
           </Popover>
-          <Button className="gradient-primary text-primary-foreground">
+          <Button onClick={handleExport} className="gradient-primary text-primary-foreground">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

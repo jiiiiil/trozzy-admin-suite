@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,31 +16,75 @@ import {
   ComposedChart,
   Area,
 } from 'recharts';
+import { exportToCSV } from '@/lib/mockData';
+import { useToast } from '@/hooks/use-toast';
 
 const AdvancedAnalytics = () => {
+  const { toast } = useToast();
+  const [period, setPeriod] = useState('30d');
+  const [filterApplied, setFilterApplied] = useState(false);
+
+  // Store filter state in localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('trozzy_advanced_analytics_filter');
+    if (saved) setPeriod(saved);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('trozzy_advanced_analytics_filter', period);
+  }, [period]);
+
+  const getMultiplier = () => {
+    switch (period) {
+      case '7d': return 0.3;
+      case '30d': return 1;
+      case '90d': return 2.5;
+      case '1y': return 10;
+      default: return 1;
+    }
+  };
+
+  const multiplier = getMultiplier();
+
   const cohortData = [
-    { month: 'Jan', newUsers: 1200, returning: 800, churned: 150 },
-    { month: 'Feb', newUsers: 1400, returning: 950, churned: 180 },
-    { month: 'Mar', newUsers: 1100, returning: 1100, churned: 120 },
-    { month: 'Apr', newUsers: 1600, returning: 1250, churned: 200 },
-    { month: 'May', newUsers: 1800, returning: 1400, churned: 220 },
-    { month: 'Jun', newUsers: 2100, returning: 1650, churned: 180 },
+    { month: 'Jan', newUsers: Math.round(1200 * multiplier), returning: Math.round(800 * multiplier), churned: Math.round(150 * multiplier) },
+    { month: 'Feb', newUsers: Math.round(1400 * multiplier), returning: Math.round(950 * multiplier), churned: Math.round(180 * multiplier) },
+    { month: 'Mar', newUsers: Math.round(1100 * multiplier), returning: Math.round(1100 * multiplier), churned: Math.round(120 * multiplier) },
+    { month: 'Apr', newUsers: Math.round(1600 * multiplier), returning: Math.round(1250 * multiplier), churned: Math.round(200 * multiplier) },
+    { month: 'May', newUsers: Math.round(1800 * multiplier), returning: Math.round(1400 * multiplier), churned: Math.round(220 * multiplier) },
+    { month: 'Jun', newUsers: Math.round(2100 * multiplier), returning: Math.round(1650 * multiplier), churned: Math.round(180 * multiplier) },
   ];
 
   const funnelData = [
-    { stage: 'Visits', value: 10000, rate: 100 },
-    { stage: 'Product View', value: 6500, rate: 65 },
-    { stage: 'Add to Cart', value: 2800, rate: 28 },
-    { stage: 'Checkout', value: 1200, rate: 12 },
-    { stage: 'Purchase', value: 800, rate: 8 },
+    { stage: 'Visits', value: Math.round(10000 * multiplier), rate: 100 },
+    { stage: 'Product View', value: Math.round(6500 * multiplier), rate: 65 },
+    { stage: 'Add to Cart', value: Math.round(2800 * multiplier), rate: 28 },
+    { stage: 'Checkout', value: Math.round(1200 * multiplier), rate: 12 },
+    { stage: 'Purchase', value: Math.round(800 * multiplier), rate: 8 },
   ];
 
   const revenueBreakdown = [
-    { category: 'Electronics', value: 45000, growth: 12 },
-    { category: 'Accessories', value: 28000, growth: 8 },
-    { category: 'Furniture', value: 18000, growth: 15 },
-    { category: 'Home', value: 12000, growth: -3 },
+    { category: 'Electronics', value: Math.round(45000 * multiplier), growth: 12 },
+    { category: 'Accessories', value: Math.round(28000 * multiplier), growth: 8 },
+    { category: 'Furniture', value: Math.round(18000 * multiplier), growth: 15 },
+    { category: 'Home', value: Math.round(12000 * multiplier), growth: -3 },
   ];
+
+  const handleApplyFilter = () => {
+    setFilterApplied(true);
+    toast({ title: 'Filters Applied', description: `Showing data for ${period === '7d' ? 'Last 7 days' : period === '30d' ? 'Last 30 days' : period === '90d' ? 'Last 90 days' : 'Last year'}` });
+  };
+
+  const handleExport = () => {
+    const exportData = [
+      ...cohortData.map(d => ({ type: 'Cohort', month: d.month, newUsers: d.newUsers, returning: d.returning, churned: d.churned })),
+      ...funnelData.map(d => ({ type: 'Funnel', stage: d.stage, value: d.value, rate: `${d.rate}%` })),
+      ...revenueBreakdown.map(d => ({ type: 'Revenue', category: d.category, value: `$${d.value}`, growth: `${d.growth}%` })),
+    ];
+    const today = new Date().toISOString().split('T')[0];
+    exportToCSV(exportData, `advanced-analytics-${today}.csv`);
+    toast({ title: 'Exported', description: `advanced-analytics-${today}.csv downloaded` });
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -51,7 +96,7 @@ const AdvancedAnalytics = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Select defaultValue="30d">
+          <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-40 glass">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
@@ -62,11 +107,11 @@ const AdvancedAnalytics = () => {
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" className="glass">
+          <Button variant="outline" className="glass" onClick={handleApplyFilter}>
             <Filter className="mr-2 h-4 w-4" />
             Filters
           </Button>
-          <Button className="gradient-primary text-primary-foreground">
+          <Button onClick={handleExport} className="gradient-primary text-primary-foreground">
             <Download className="mr-2 h-4 w-4" />
             Export Report
           </Button>
