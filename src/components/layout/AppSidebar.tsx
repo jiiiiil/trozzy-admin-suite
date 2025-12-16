@@ -13,7 +13,6 @@ import {
   ClipboardList,
   Boxes,
   CreditCard,
-  Megaphone,
   Users,
   FileImage,
   FolderTree,
@@ -90,7 +89,6 @@ const menuGroups: MenuGroup[] = [
       { title: 'Orders', url: '/commerce/orders', icon: ClipboardList },
       { title: 'Inventory', url: '/commerce/inventory', icon: Boxes },
       { title: 'Payments', url: '/commerce/payments', icon: CreditCard },
-      { title: 'Marketing', url: '/commerce/marketing', icon: Megaphone },
     ],
   },
   {
