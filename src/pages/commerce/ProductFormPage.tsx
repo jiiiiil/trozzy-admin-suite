@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,9 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Save, Plus, X, Image as ImageIcon } from 'lucide-react';
-import { getProducts, setProducts, Product, generateId, addAuditLog, getCategories } from '@/lib/mockData';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ArrowLeft, Save, Plus, X, Image as ImageIcon, Upload } from 'lucide-react';
+import { getProducts, setProducts, Product, generateId, addAuditLog, getCategories, setCategories as saveCategories, Category } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
 
 const defaultProduct: Omit<Product, 'id' | 'createdAt'> = {
@@ -50,12 +51,16 @@ const ProductFormPage = () => {
   const isEditing = !!id;
 
   const [formData, setFormData] = useState(defaultProduct);
-  const [categories, setCategories] = useState(getCategories());
+  const [categories, setCategoriesState] = useState(getCategories());
   const [newSize, setNewSize] = useState('');
   const [newColor, setNewColor] = useState('');
   const [newTag, setNewTag] = useState('');
   const [newFeature, setNewFeature] = useState('');
   const [newGalleryUrl, setNewGalleryUrl] = useState('');
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const mainImageRef = useRef<HTMLInputElement>(null);
+  const galleryImageRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isEditing) {
@@ -165,6 +170,53 @@ const ProductFormPage = () => {
     toast({ title: 'Generated', description: `Created ${variants.length} variants` });
   };
 
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) return;
+    const newCat: Category = {
+      id: generateId(),
+      name: newCategoryName.trim(),
+      description: '',
+      productCount: 0,
+      active: true,
+      parentId: null,
+      order: categories.length,
+    };
+    const updated = [...categories, newCat];
+    setCategoriesState(updated);
+    saveCategories(updated);
+    setFormData(prev => ({ ...prev, category: newCat.name }));
+    setNewCategoryName('');
+    setShowAddCategory(false);
+    toast({ title: 'Success', description: 'Category created' });
+  };
+
+  const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFormData(prev => ({ ...prev, image: event.target?.result as string }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGalleryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || formData.galleryImages.length >= 10) return;
+    
+    Array.from(files).slice(0, 10 - formData.galleryImages.length).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData(prev => ({ 
+          ...prev, 
+          galleryImages: [...prev.galleryImages, event.target?.result as string].slice(0, 10) 
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+    if (galleryImageRef.current) galleryImageRef.current.value = '';
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
@@ -207,14 +259,19 @@ const ProductFormPage = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={formData.category} onValueChange={v => setFormData({ ...formData, category: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.filter(c => c.active).map(cat => (
-                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select value={formData.category} onValueChange={v => setFormData({ ...formData, category: v })}>
+                      <SelectTrigger className="flex-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.filter(c => c.active).map(cat => (
+                          <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" variant="outline" onClick={() => setShowAddCategory(true)}>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -250,20 +307,34 @@ const ProductFormPage = () => {
           <Card className="glass">
             <CardHeader><CardTitle>Product Images</CardTitle></CardHeader>
             <CardContent className="space-y-6">
+              <input ref={mainImageRef} type="file" accept="image/*" onChange={handleMainImageUpload} className="hidden" />
+              <input ref={galleryImageRef} type="file" accept="image/*" multiple onChange={handleGalleryImageUpload} className="hidden" />
+              
               <div className="space-y-2">
-                <Label>Main Image URL</Label>
-                <Input value={formData.image} onChange={e => setFormData({ ...formData, image: e.target.value })} placeholder="https://example.com/image.jpg" />
+                <Label>Main Image</Label>
+                <div className="flex gap-2">
+                  <Input value={typeof formData.image === 'string' && !formData.image.startsWith('data:') ? formData.image : ''} onChange={e => setFormData({ ...formData, image: e.target.value })} placeholder="Image URL or upload file" className="flex-1" />
+                  <Button type="button" variant="outline" onClick={() => mainImageRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />Upload
+                  </Button>
+                </div>
                 {formData.image && (
-                  <div className="mt-2">
+                  <div className="mt-2 relative inline-block">
                     <img src={formData.image} alt="Preview" className="h-32 w-32 rounded-lg object-cover border" />
+                    <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6" onClick={() => setFormData({ ...formData, image: '' })}>
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>Gallery Images ({formData.galleryImages.length}/10)</Label>
                 <div className="flex gap-2">
-                  <Input value={newGalleryUrl} onChange={e => setNewGalleryUrl(e.target.value)} placeholder="Image URL" />
+                  <Input value={newGalleryUrl} onChange={e => setNewGalleryUrl(e.target.value)} placeholder="Image URL" className="flex-1" />
                   <Button onClick={addGalleryImage} variant="outline"><Plus className="h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" onClick={() => galleryImageRef.current?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />Upload
+                  </Button>
                 </div>
                 <div className="grid grid-cols-5 gap-2 mt-2">
                   {formData.galleryImages.map((url, i) => (
@@ -275,7 +346,10 @@ const ProductFormPage = () => {
                     </div>
                   ))}
                   {formData.galleryImages.length < 10 && (
-                    <div className="aspect-square rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground">
+                    <div 
+                      className="aspect-square rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground cursor-pointer hover:bg-muted/50"
+                      onClick={() => galleryImageRef.current?.click()}
+                    >
                       <ImageIcon className="h-6 w-6" />
                     </div>
                   )}
@@ -284,6 +358,23 @@ const ProductFormPage = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Add Category Dialog */}
+        <Dialog open={showAddCategory} onOpenChange={setShowAddCategory}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Category</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label>Category Name</Label>
+              <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder="Enter category name" className="mt-2" />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddCategory(false)}>Cancel</Button>
+              <Button onClick={handleAddCategory}>Add Category</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <TabsContent value="inventory" className="mt-6">
           <Card className="glass">

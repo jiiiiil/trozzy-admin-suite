@@ -35,16 +35,16 @@ export function TopHeader({ onToggleSidebar }: TopHeaderProps) {
     localStorage.removeItem('trozzy_auth_user');
     localStorage.removeItem('trozzy_logged_in_user');
     toast({ title: 'Logged Out', description: 'You have been logged out successfully' });
-    navigate('/auth/sign-in');
+    navigate('/sign-in');
   };
 
   const handleProfile = () => {
-    navigate('/system/settings');
+    navigate('/settings');
     toast({ title: 'Profile', description: 'Opening profile settings...' });
   };
 
   const handleSettings = () => {
-    navigate('/system/settings');
+    navigate('/settings');
   };
 
   return (
