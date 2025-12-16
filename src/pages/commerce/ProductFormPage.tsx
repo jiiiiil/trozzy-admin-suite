@@ -14,7 +14,25 @@ import { ArrowLeft, Save, Plus, X, Image as ImageIcon, Upload } from 'lucide-rea
 import { getProducts, setProducts, Product, generateId, addAuditLog, getCategories, setCategories as saveCategories, Category } from '@/lib/mockData';
 import { useToast } from '@/hooks/use-toast';
 
-const defaultProduct: Omit<Product, 'id' | 'createdAt'> = {
+interface ProductMarketing {
+  buyersToday: boolean;
+  stockWarning: boolean;
+  countdown: boolean;
+  buy2get1: boolean;
+  flatDiscount: boolean;
+  couponCode: boolean;
+}
+
+const defaultMarketing: ProductMarketing = {
+  buyersToday: false,
+  stockWarning: false,
+  countdown: false,
+  buy2get1: false,
+  flatDiscount: false,
+  couponCode: false,
+};
+
+const defaultProduct: Omit<Product, 'id' | 'createdAt'> & { marketing: ProductMarketing } = {
   name: '',
   sku: '',
   price: 0,
@@ -42,6 +60,7 @@ const defaultProduct: Omit<Product, 'id' | 'createdAt'> = {
   dimensions: { length: 0, width: 0, height: 0 },
   badge: '',
   brand: '',
+  marketing: defaultMarketing,
 };
 
 const ProductFormPage = () => {
@@ -95,6 +114,7 @@ const ProductFormPage = () => {
           dimensions: product.dimensions || { length: 0, width: 0, height: 0 },
           badge: product.badge || '',
           brand: product.brand || '',
+          marketing: (product as any).marketing || defaultMarketing,
         });
       }
     }
@@ -511,24 +531,98 @@ const ProductFormPage = () => {
         </TabsContent>
 
         <TabsContent value="marketing" className="mt-6">
-          <Card className="glass">
-            <CardHeader><CardTitle>Marketing Settings</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Promotional Badge</Label>
-                <Select value={formData.badge} onValueChange={v => setFormData({ ...formData, badge: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select badge" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="bestseller">Bestseller</SelectItem>
-                    <SelectItem value="limited">Limited Edition</SelectItem>
-                    <SelectItem value="sale">On Sale</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            <Card className="glass">
+              <CardHeader><CardTitle>Promotional Badge</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label>Select Badge</Label>
+                  <Select value={formData.badge} onValueChange={v => setFormData({ ...formData, badge: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select badge" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="new">New</SelectItem>
+                      <SelectItem value="bestseller">Bestseller</SelectItem>
+                      <SelectItem value="limited">Limited Edition</SelectItem>
+                      <SelectItem value="sale">On Sale</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass">
+              <CardHeader><CardTitle>Urgency Indicators</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Show "Buyers Today" Count</p>
+                    <p className="text-sm text-muted-foreground">Display simulated buyer activity to create urgency</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.buyersToday} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, buyersToday: checked } })} 
+                  />
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Show "Stock Left" Warning</p>
+                    <p className="text-sm text-muted-foreground">Display low stock warning to encourage quick purchase</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.stockWarning} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, stockWarning: checked } })} 
+                  />
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Show Daily Sale Countdown</p>
+                    <p className="text-sm text-muted-foreground">Display countdown timer for daily deals</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.countdown} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, countdown: checked } })} 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass">
+              <CardHeader><CardTitle>Special Offers</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Buy 2 Get 1 Free</p>
+                    <p className="text-sm text-muted-foreground">Enable bundle offer on this product</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.buy2get1} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, buy2get1: checked } })} 
+                  />
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Flat Discount</p>
+                    <p className="text-sm text-muted-foreground">Show flat discount badge on product</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.flatDiscount} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, flatDiscount: checked } })} 
+                  />
+                </div>
+                <div className="p-4 rounded-lg bg-muted/50 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Coupon Code</p>
+                    <p className="text-sm text-muted-foreground">Enable coupon code for this product</p>
+                  </div>
+                  <Switch 
+                    checked={formData.marketing.couponCode} 
+                    onCheckedChange={checked => setFormData({ ...formData, marketing: { ...formData.marketing, couponCode: checked } })} 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="details" className="mt-6">

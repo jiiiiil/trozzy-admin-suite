@@ -12,7 +12,7 @@ import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics";
 import RealTimeAnalytics from "./pages/analytics/RealTimeAnalytics";
 import BusinessIntelligence from "./pages/analytics/BusinessIntelligence";
 import ReportBuilder from "./pages/analytics/ReportBuilder";
-import MarketingPage from "./pages/commerce/MarketingPage";
+
 import ProductsPage from "./pages/commerce/ProductsPage";
 import ProductFormPage from "./pages/commerce/ProductFormPage";
 import OrdersPage from "./pages/commerce/OrdersPage";
@@ -64,7 +64,7 @@ const App = () => (
             <Route path="/commerce/orders" element={<OrdersPage />} />
             <Route path="/commerce/inventory" element={<InventoryPage />} />
             <Route path="/commerce/payments" element={<PaymentsPage />} />
-            <Route path="/commerce/marketing" element={<MarketingPage />} />
+            
             <Route path="/users" element={<UsersPage />} />
             <Route path="/content" element={<ContentPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
