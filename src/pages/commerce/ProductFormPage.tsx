@@ -58,7 +58,7 @@ const defaultProduct: Omit<Product, 'id' | 'createdAt'> & { marketing: ProductMa
   metaDescription: '',
   weight: 0,
   dimensions: { length: 0, width: 0, height: 0 },
-  badge: '',
+  badge: 'none',
   brand: '',
   marketing: defaultMarketing,
 };
@@ -112,7 +112,7 @@ const ProductFormPage = () => {
           metaDescription: product.metaDescription || '',
           weight: product.weight || 0,
           dimensions: product.dimensions || { length: 0, width: 0, height: 0 },
-          badge: product.badge || '',
+          badge: product.badge || 'none',
           brand: product.brand || '',
           marketing: (product as any).marketing || defaultMarketing,
         });
@@ -283,7 +283,7 @@ const ProductFormPage = () => {
                     <Select value={formData.category} onValueChange={v => setFormData({ ...formData, category: v })}>
                       <SelectTrigger className="flex-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>
-                        {categories.filter(c => c.active).map(cat => (
+                        {categories.filter(c => c.active && c.name && c.name.trim() !== '').map(cat => (
                           <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -640,7 +640,7 @@ const ProductFormPage = () => {
                   <Select value={formData.badge} onValueChange={v => setFormData({ ...formData, badge: v })}>
                     <SelectTrigger><SelectValue placeholder="Select badge" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="new">New</SelectItem>
                       <SelectItem value="bestseller">Bestseller</SelectItem>
                       <SelectItem value="limited">Limited Edition</SelectItem>
