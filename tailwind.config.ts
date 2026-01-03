@@ -114,6 +114,7 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "sans-serif"],
+        serif: ["Cormorant Garamond", "Georgia", "Cambria", "Times New Roman", "Times", "serif"],
       },
     },
   },
