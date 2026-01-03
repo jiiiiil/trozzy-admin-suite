@@ -5,8 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { isAuthenticated, initializeMockData } from "./lib/mockData";
-
-// Admin Pages
 import SignInPage from "./pages/auth/SignInPage";
 import Dashboard from "./pages/Dashboard";
 import AnalyticsOverview from "./pages/analytics/AnalyticsOverview";
@@ -14,6 +12,7 @@ import AdvancedAnalytics from "./pages/analytics/AdvancedAnalytics";
 import RealTimeAnalytics from "./pages/analytics/RealTimeAnalytics";
 import BusinessIntelligence from "./pages/analytics/BusinessIntelligence";
 import ReportBuilder from "./pages/analytics/ReportBuilder";
+
 import ProductsPage from "./pages/commerce/ProductsPage";
 import ProductFormPage from "./pages/commerce/ProductFormPage";
 import OrdersPage from "./pages/commerce/OrdersPage";
@@ -31,15 +30,6 @@ import AIAutomationPage from "./pages/system/AIAutomationPage";
 import PluginsPage from "./pages/system/PluginsPage";
 import SettingsPage from "./pages/system/SettingsPage";
 import NotFound from "./pages/NotFound";
-
-// Storefront Pages (User Side)
-import HomePage from "./pages/storefront/HomePage";
-import ShopPage from "./pages/storefront/ShopPage";
-import ProductPage from "./pages/storefront/ProductPage";
-import CartPage from "./pages/storefront/CartPage";
-import CheckoutPage from "./pages/storefront/CheckoutPage";
-import AccountPage from "./pages/storefront/AccountPage";
-import LoginPage from "./pages/storefront/LoginPage";
 
 const queryClient = new QueryClient();
 
@@ -60,22 +50,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Storefront Routes (User Side) */}
-          <Route path="/" element={<Navigate to="/home" replace />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/shop" element={<ShopPage />} />
-          <Route path="/collections" element={<ShopPage />} />
-          <Route path="/product/:id" element={<ProductPage />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/account/orders" element={<AccountPage />} />
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Admin Routes */}
           <Route path="/sign-in" element={<SignInPage />} />
           <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-            <Route path="/admin" element={<Dashboard />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/analytics/overview" element={<AnalyticsOverview />} />
             <Route path="/analytics/advanced" element={<AdvancedAnalytics />} />
             <Route path="/analytics/realtime" element={<RealTimeAnalytics />} />
